@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Is the User Reacting to the AI? </title>
+<style>
+  :root{
+    --bg:#f4f5f7; --panel:#fff; --ink:#1b1f24; --muted:#6b7280; --line:#e3e6ea;
+    --accent:#2f5bea; --accent-ink:#fff; --user:#dfe9ff; --asst:#f6f7f9;
+    --a:#2f5bea; --b:#c2410c; --tie:#4b5563; --ok:#15803d; --warn:#b45309;
+    --radius:12px; --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.5;font-size:15px}
+  button{font:inherit;cursor:pointer}
+  input{font:inherit}
+  .hidden{display:none !important}
+
+  /* ---------- Start screen ---------- */
+  #start{max-width:720px;margin:40px auto;padding:0 20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:28px 32px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  h1{font-size:22px;margin:0 0 6px}
+  .sub{color:var(--muted);margin:0 0 20px}
+  .notice{background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:10px;padding:14px 16px;margin:16px 0}
+  .notice strong{display:block;margin-bottom:4px}
+  .field{margin:18px 0}
+  .field label{display:block;font-weight:600;margin-bottom:6px}
+  .field input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:16px}
+  .btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:9px 14px;color:var(--ink)}
+  .btn:hover{background:#f0f2f5}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  .btn.primary:hover{filter:brightness(.95)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.sm{padding:5px 10px;font-size:13px}
+  ul.howto{margin:8px 0 0;padding-left:20px;color:#374151}
+  ul.howto li{margin:4px 0}
+  .ds-info{font-size:13px;color:var(--muted);margin-top:8px}
+  table.assign{border-collapse:collapse;font-size:14px;margin:8px 0 4px;width:100%}
+  table.assign th,table.assign td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left}
+  table.assign th{background:#f9fafb;font-weight:600;color:#374151}
+  table.assign tr.me td{background:#eaf0ff;font-weight:600}
+  table.assign .sets span{display:inline-block;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;border-radius:6px;padding:1px 8px;margin-right:4px;font-weight:600}
+  .loginnote{background:#eef2ff;border:1px solid #c7d2fe;color:#1e1b4b;border-radius:10px;padding:12px 16px;margin:16px 0;font-size:14px}
+  .loginnote strong{display:block;margin-bottom:4px}
+  .resume{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:8px;padding:10px 12px;font-size:14px;margin-top:10px}
+
+  /* ---------- App ---------- */
+  #app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+  header.top{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .progress{display:flex;align-items:center;gap:10px;font-weight:600}
+  .progress .bar{width:160px;height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden}
+  .progress .bar i{display:block;height:100%;background:var(--accent);width:0}
+  .progress .count{font-variant-numeric:tabular-nums}
+  .rater{color:var(--muted);font-size:14px}
+  .spacer{flex:1}
+  .jump{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+  .jump input{width:64px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;text-align:center}
+  .settabs{display:flex;gap:6px;flex-wrap:wrap}
+  .settab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600;color:#374151;display:flex;gap:6px;align-items:center}
+  .settab:hover{background:#f0f2f5}
+  .settab.cur{border-color:var(--accent);background:#eaf0ff;color:var(--accent)}
+  .settab.done{border-color:#a7f3d0;background:#ecfdf5;color:#065f46}
+  .settab.done.cur{outline:2px solid var(--accent)}
+  .settab small{font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+  .settab.done small{color:#047857}
+  .settab:not(.mine){opacity:.75}
+  .saved{font-size:12px;color:var(--ok)}
+  .unanswered{font-size:12px;color:var(--warn);font-weight:600}
+  .sync{font-size:12px;color:var(--muted);padding:3px 8px;border-radius:99px;background:#f3f4f6}
+  .sync.ok{color:var(--ok);background:#ecfdf5} .sync.busy{color:var(--warn);background:#fff7ed} .sync.err{color:#b91c1c;background:#fef2f2}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 14px}
+  .chips button{border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:6px;padding:4px 10px;font-size:13px;font-variant-numeric:tabular-nums}
+  .chips button:hover{background:#ffedd5}
+  table.admin{border-collapse:collapse;width:100%;font-size:14px;margin:10px 0}
+  table.admin th,table.admin td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left}
+  table.admin th{background:#f9fafb;font-weight:600;color:#374151}
+  table.admin .bar{display:inline-block;width:120px;height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden;vertical-align:middle;margin-right:6px}
+  table.admin .bar i{display:block;height:100%;background:var(--accent)}
+
+  .qbar{padding:12px 16px;background:#eef2ff;border-bottom:1px solid #c7d2fe;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .qbar .trait{font-size:12px;font-weight:700;letter-spacing:.04em;background:#3730a3;color:#fff;border-radius:6px;padding:3px 8px}
+  .qbar .q{font-size:19px;font-weight:700;color:#1e1b4b}
+  .qbar .id{color:#6366f1;font-size:13px;margin-left:auto;font-variant-numeric:tabular-nums}
+  .qbar .sub{width:100%;font-size:13px;color:#3730a3}
+  .qbar .q .pw{font-weight:600;color:#15803d;margin-left:6px}
+  .traits{display:flex;gap:6px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);background:#fff;font-size:13px;flex-wrap:wrap}
+  .traits .lbl{color:var(--muted);margin-right:4px}
+  .tchip{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-weight:700;font-variant-numeric:tabular-nums;background:#f9fafb;cursor:help}
+  .tchip .pole{font-weight:800}
+  .tchip .word{font-weight:500;color:#374151;font-size:12px;margin-left:2px}
+  .tchip.target .word{color:#3730a3;font-style:italic}
+  .tchip.plus .pole{color:#15803d} .tchip.minus .pole{color:#b91c1c}
+  .tchip.target{border:2px dashed #3730a3;background:#eef2ff;color:#1e1b4b}
+  .tchip.target .pole{color:#3730a3}
+  .legend{font-size:12px;color:#4b5563;width:100%;margin-top:2px}
+
+  main{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 16px}
+  .pane{display:flex;flex-direction:column;min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .pane-head{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:#fafbfc}
+  .pane-head .tag{font-weight:800;font-size:15px;padding:2px 10px;border-radius:6px;color:#fff}
+  .pane.A .tag{background:var(--a)} .pane.B .tag{background:var(--b)}
+  .pane-head .meta{color:var(--muted);font-size:13px}
+  .pane-head .tools{margin-left:auto;display:flex;gap:6px}
+  .chat{flex:1;min-height:0;overflow:auto;padding:14px 14px 24px;scroll-behavior:smooth}
+  .msg{display:flex;flex-direction:column;margin:0 0 12px;max-width:92%}
+  .msg.user{align-self:flex-end;margin-left:auto}
+  .msg.assistant{align-self:flex-start}
+  .msg .who{font-size:11px;font-weight:700;color:var(--muted);margin:0 6px 3px;letter-spacing:.03em}
+  .msg.user .who{text-align:right}
+  .bubble{border-radius:14px;padding:10px 14px;white-space:pre-wrap;word-break:break-word;position:relative}
+  .msg.user .bubble{background:var(--user);border-bottom-right-radius:4px}
+  /* shared opening prompt: identical in A and B, not part of what is judged */
+  .msg.opening{align-self:stretch;max-width:100%;margin:0 0 14px}
+  .msg.opening .who{text-align:left;color:#6b7280}
+  .msg.opening .bubble{background:#f3f4f6;border:1px dashed #c4c8cf;color:#4b5563;border-radius:10px;font-style:italic}
+  .msg.opening .who .note{font-weight:500;letter-spacing:0;text-transform:none;margin-left:6px;color:#9ca3af}
+  .divider{display:flex;align-items:center;gap:10px;color:#9ca3af;font-size:11px;font-weight:700;letter-spacing:.06em;margin:0 0 12px}
+  .divider::before,.divider::after{content:"";flex:1;border-top:1px dashed #d1d5db}
+  .msg.assistant .bubble{background:var(--asst);border:1px solid var(--line);border-bottom-left-radius:4px;white-space:normal}
+  .msg.assistant .bubble.collapsible{max-height:240px;overflow:hidden}
+  .msg.assistant .bubble.collapsible::after{content:"";position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(rgba(246,247,249,0),#f6f7f9 85%);pointer-events:none}
+  .msg.assistant .bubble.collapsible.open{max-height:none}
+  .msg.assistant .bubble.collapsible.open::after{display:none}
+  .toggle{align-self:flex-start;margin:4px 6px 0;background:none;border:none;color:var(--accent);font-size:13px;padding:2px 4px}
+  .turnno{font-size:10px;color:#9ca3af;margin-left:4px;font-weight:500}
+
+  /* markdown inside assistant bubble */
+  .md > :first-child{margin-top:0} .md > :last-child{margin-bottom:0}
+  .md p{margin:8px 0}
+  .md h1,.md h2,.md h3,.md h4,.md h5{margin:12px 0 6px;line-height:1.3}
+  .md h1{font-size:18px}.md h2{font-size:17px}.md h3{font-size:16px}.md h4{font-size:15px}.md h5{font-size:14px}
+  .md ul,.md ol{margin:6px 0;padding-left:22px}
+  .md li{margin:3px 0}
+  .md blockquote{margin:8px 0;padding:6px 12px;border-left:3px solid #c7d2fe;background:#fff;color:#374151}
+  .md code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;background:#eceef2;padding:1px 5px;border-radius:4px}
+  .md pre{background:#1f2937;color:#f3f4f6;padding:10px 12px;border-radius:8px;overflow:auto;font-size:13px}
+  .md pre code{background:none;padding:0;color:inherit}
+  .md hr{border:none;border-top:1px solid var(--line);margin:10px 0}
+  .md table{border-collapse:collapse;margin:8px 0;font-size:14px}
+  .md th,.md td{border:1px solid var(--line);padding:4px 8px}
+  .md a{color:var(--accent)}
+
+  /* ---------- Answer bar ---------- */
+  footer.answer{background:var(--panel);border-top:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .choices{display:flex;gap:8px;flex-wrap:wrap}
+  .choice{border:2px solid var(--line);background:#fff;border-radius:10px;padding:10px 18px;font-weight:700;font-size:15px;min-width:120px;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .choice small{font-weight:500;color:var(--muted);font-size:11px}
+  .choice:hover{background:#f7f8fa}
+  .choice.A.sel{border-color:var(--a);background:#eaf0ff;color:var(--a)}
+  .choice.B.sel{border-color:var(--b);background:#fff1ea;color:var(--b)}
+  .choice.tie.sel{border-color:var(--tie);background:#f1f3f5;color:var(--tie)}
+  .nav{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .hint{font-size:12px;color:var(--muted);width:100%}
+  .hint kbd{font-family:inherit;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;font-size:11px;background:#fff}
+
+  /* ---------- Modal ---------- */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal{background:#fff;border-radius:12px;max-width:720px;width:100%;max-height:85vh;display:flex;flex-direction:column;padding:20px}
+  .modal h2{margin:0 0 8px;font-size:18px}
+  .modal textarea{flex:1;min-height:260px;width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:10px;resize:vertical}
+  .modal .row{display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap}
+  .modal .note{font-size:12px;color:var(--muted)}
+
+  /* ---------- Done ---------- */
+  #done{max-width:640px;margin:60px auto;padding:0 20px}
+
+  @media (max-width: 960px){
+    main{display:flex;flex-direction:column;overflow:auto;gap:12px}
+    .pane{flex:none;height:68vh}
+    .progress .bar{width:100px}
+    .qbar .q{font-size:17px}
+    .nav{margin-left:0}
+  }
+
+main.single{grid-template-columns:minmax(0,860px);justify-content:center}
+.choice{min-width:170px}
+.choice.O.sel{border-color:#2f5bea;background:#eaf0ff;color:#2f5bea}
+.choice.R.sel{border-color:#15803d;background:#ecfdf5;color:#15803d}
+.choice.C.sel{border-color:#b91c1c;background:#fef2f2;color:#b91c1c}
+.choice.G.sel{border-color:#b45309;background:#fff7ed;color:#b45309}
+dl.defs{margin:8px 0 0;font-size:14px} dl.defs dt{font-weight:700;margin-top:8px} dl.defs dd{margin:2px 0 0 0;color:#374151}
+.qbar .defs-inline{width:100%;font-size:13px;color:#3730a3}
+.msg.user.target .bubble{background:#fff7d6;box-shadow:0 0 0 3px #f59e0b}
+.msg.user.target .who{color:#b45309}
+.ctxlabel{display:flex;align-items:center;gap:10px;color:#9ca3af;font-size:11px;font-weight:700;letter-spacing:.06em;margin:4px 0 12px}
+.ctxlabel::before,.ctxlabel::after{content:"";flex:1;border-top:1px dashed #d1d5db}
+.exbox{margin:16px 0}
+.ex{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0;font-size:14px;background:#fafbfc}
+.ex .a{color:#4b5563;font-size:13px}
+.ex .u{background:#fff7d6;border:1px solid #f59e0b;border-radius:8px;padding:4px 10px;margin:6px 0;display:inline-block}
+.ex .lab{font-weight:700;font-size:12px;border-radius:6px;padding:1px 8px;margin-right:6px;color:#fff}
+.ex .lab.O{background:#2f5bea}.ex .lab.C{background:#b91c1c}.ex .lab.S{background:#15803d}
+.ex .why{color:#374151;font-size:13px}
+.lt td{vertical-align:top;font-size:14px}.lt td:first-child{white-space:nowrap}
+.exq{color:#374151;font-size:13.5px}.loginnote .exq{color:#7f1d1d}dl.defs dt{margin-top:14px}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0 18px}
+.mc{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fafbfc;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.35}
+.mr{display:flex;align-items:flex-end;gap:5px}.mr.r{justify-content:flex-end}
+.mr svg{flex:none}
+.mb{border-radius:10px;padding:6px 9px;max-width:80%}
+.mb.u{background:#dfe9ff}.mb.a{background:#fff;border:1px solid var(--line)}
+.mb.hl{background:#fff7d6;box-shadow:0 0 0 2px #f59e0b}
+.ml{margin-top:4px;text-align:center;font-weight:700;border-radius:6px;padding:4px;font-size:13px}
+.mw{text-align:center;color:#6b7280;font-size:12px}
+.mc.O .ml{background:#eaf0ff;color:#2f5bea;border:1px solid #2f5bea}
+.mc.C .ml{background:#fef2f2;color:#b91c1c;border:1px solid #b91c1c}
+.mc.S .ml{background:#ecfdf5;color:#15803d;border:1px solid #15803d}
+@media(max-width:640px){.mgrid{grid-template-columns:1fr}}
+/* unified style with start page */
+.qbar{background:#fff;border-bottom:1px solid var(--line)}
+.qbar .trait{background:#f59e0b;color:#fff}
+.qbar .q{color:var(--ink)}
+.qbar .defs-inline{color:#4b5563;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pill{font-weight:700;font-size:12px;border-radius:6px;padding:2px 8px;border:1px solid}
+.pill.O{background:#eaf0ff;color:#2f5bea;border-color:#2f5bea}
+.pill.C{background:#fef2f2;color:#b91c1c;border-color:#b91c1c;margin-left:8px}
+.pill.S{background:#ecfdf5;color:#15803d;border-color:#15803d;margin-left:8px}
+.chat{background:#fafbfc}
+.mrow{display:flex;align-items:flex-end;gap:8px}
+.msg.user .mrow{justify-content:flex-end}
+.av{flex:none;line-height:0}
+.msg .who{margin-left:44px}.msg.user .who{margin-right:44px;margin-left:0}
+.msg.assistant .bubble{background:#fff;border:1px solid var(--line);border-radius:12px;border-bottom-left-radius:4px}
+.msg.user .bubble{background:#dfe9ff;border-radius:12px;border-bottom-right-radius:4px}
+.msg.user.target .bubble{background:#fff7d6;box-shadow:0 0 0 2.5px #f59e0b}
+.msg.assistant .bubble.collapsible::after{background:linear-gradient(rgba(255,255,255,0),#fff 85%)}
+.toggle{margin-left:44px}
+.choice{min-width:170px;border-width:1.5px}
+.choice.O{background:#eaf0ff;color:#2f5bea;border-color:#93acf5}
+.choice.C{background:#fef2f2;color:#b91c1c;border-color:#f3a5a5}
+.choice.R{background:#ecfdf5;color:#15803d;border-color:#8fd3a8}
+.choice small{color:inherit;opacity:.7}
+.choice.O:hover,.choice.C:hover,.choice.R:hover{filter:brightness(.97)}
+.choice.O.sel{background:#2f5bea;color:#fff;border-color:#2f5bea}
+.choice.C.sel{background:#b91c1c;color:#fff;border-color:#b91c1c}
+.choice.R.sel{background:#15803d;color:#fff;border-color:#15803d}
+</style></head><body>
+
+<section id="start"><div class="card">
+<h1>How Is the User Reacting to the AI? </h1>
+<p class="sub" style="color:#374151">When people chat with an AI assistant, the AI's answer is not always what they wanted. It may be vague or unhelpful, miss the point, push a different plan, disagree with the user's view, or fail to comfort someone who is upset. The user may then push back, complain, or argue. We call this a <b>conflict</b>.</p>
+<p class="sub" style="color:#374151">In this task you will read short conversations between a <b>user</b> and an <b>AI assistant</b>. For each item, look at the <b>highlighted user reply</b> and decide how the user is reacting to the AI's previous answer: <b>still going</b> with the conversation, <b>in conflict</b> with the AI, or <b>satisfied</b>.</p>
+<p style="margin:4px 0 0;font-size:13px;color:#6b7280">The <span style="background:#fff7d6;box-shadow:0 0 0 2px #f59e0b;border-radius:4px;padding:0 4px">highlighted</span> user reply is the one you label:</p>
+<div class="mgrid"><div class="mc O">
+<div class="mr r"><div class="mb u">Any quick pasta ideas?</div><svg width="26" height="26" viewBox="-20 -20 40 40"><circle r="18" fill="#dfe9ff" stroke="#2f5bea" stroke-width="2"/><circle cy="-5" r="6" fill="#2f5bea"/><path d="M-10 11 a10 8 0 0 1 20 0" fill="#2f5bea"/></svg></div>
+<div class="mr"><svg width="26" height="26" viewBox="-20 -32 40 52"><rect x="-18" y="-18" width="36" height="36" rx="9" fill="#f3f4f6" stroke="#6b7280" stroke-width="2"/><circle cx="-6" cy="-2" r="3.5" fill="#374151"/><circle cx="6" cy="-2" r="3.5" fill="#374151"/><rect x="-6" y="7" width="12" height="3" rx="1.5" fill="#374151"/><line x1="0" y1="-18" x2="0" y2="-26" stroke="#6b7280" stroke-width="2"/><circle cy="-28" r="3" fill="#6b7280"/></svg><div class="mb a">Here are three easy weeknight pastas…</div></div>
+<div class="mr r"><div class="mb u hl">Nice! Can I swap the cream for something lighter?</div><svg width="26" height="26" viewBox="-20 -20 40 40"><circle r="18" fill="#dfe9ff" stroke="#2f5bea" stroke-width="2"/><circle cy="-5" r="6" fill="#2f5bea"/><path d="M-10 11 a10 8 0 0 1 20 0" fill="#2f5bea"/></svg></div>
+<div class="ml">1 · Ongoing</div><div class="mw">Keeps going, no conflict</div></div><div class="mc C">
+<div class="mr r"><div class="mb u">Help me write my cover letter?</div><svg width="26" height="26" viewBox="-20 -20 40 40"><circle r="18" fill="#dfe9ff" stroke="#2f5bea" stroke-width="2"/><circle cy="-5" r="6" fill="#2f5bea"/><path d="M-10 11 a10 8 0 0 1 20 0" fill="#2f5bea"/></svg></div>
+<div class="mr"><svg width="26" height="26" viewBox="-20 -32 40 52"><rect x="-18" y="-18" width="36" height="36" rx="9" fill="#f3f4f6" stroke="#6b7280" stroke-width="2"/><circle cx="-6" cy="-2" r="3.5" fill="#374151"/><circle cx="6" cy="-2" r="3.5" fill="#374151"/><rect x="-6" y="7" width="12" height="3" rx="1.5" fill="#374151"/><line x1="0" y1="-18" x2="0" y2="-26" stroke="#6b7280" stroke-width="2"/><circle cy="-28" r="3" fill="#6b7280"/></svg><div class="mb a">A cover letter usually has three parts…</div></div>
+<div class="mr r"><div class="mb u hl">That's too generic. Just write it?</div><svg width="26" height="26" viewBox="-20 -20 40 40"><circle r="18" fill="#dfe9ff" stroke="#2f5bea" stroke-width="2"/><circle cy="-5" r="6" fill="#2f5bea"/><path d="M-10 11 a10 8 0 0 1 20 0" fill="#2f5bea"/></svg></div>
+<div class="ml">2 · Conflict</div><div class="mw">Unhappy with the answer, pushes back</div></div><div class="mc S">
+<div class="mr r"><div class="mb u">Make this email friendlier?</div><svg width="26" height="26" viewBox="-20 -20 40 40"><circle r="18" fill="#dfe9ff" stroke="#2f5bea" stroke-width="2"/><circle cy="-5" r="6" fill="#2f5bea"/><path d="M-10 11 a10 8 0 0 1 20 0" fill="#2f5bea"/></svg></div>
+<div class="mr"><svg width="26" height="26" viewBox="-20 -32 40 52"><rect x="-18" y="-18" width="36" height="36" rx="9" fill="#f3f4f6" stroke="#6b7280" stroke-width="2"/><circle cx="-6" cy="-2" r="3.5" fill="#374151"/><circle cx="6" cy="-2" r="3.5" fill="#374151"/><rect x="-6" y="7" width="12" height="3" rx="1.5" fill="#374151"/><line x1="0" y1="-18" x2="0" y2="-26" stroke="#6b7280" stroke-width="2"/><circle cy="-28" r="3" fill="#6b7280"/></svg><div class="mb a">Here is the revised email with a warmer opening…</div></div>
+<div class="mr r"><div class="mb u hl">Perfect, sending it now. Thanks!</div><svg width="26" height="26" viewBox="-20 -20 40 40"><circle r="18" fill="#dfe9ff" stroke="#2f5bea" stroke-width="2"/><circle cy="-5" r="6" fill="#2f5bea"/><path d="M-10 11 a10 8 0 0 1 20 0" fill="#2f5bea"/></svg></div>
+<div class="ml">3 · Satisfied</div><div class="mw">Need met, wraps up</div></div></div>
+<div class="loginnote" style="background:#fff7ed;border-color:#fed7aa;border-left:4px solid #ea580c;color:#431407">
+<strong style="color:#c2410c">Conflict definition</strong>
+A conflict does <b>not</b> have to be an open fight. It means the user and the assistant hold <b>two opposing views that still need some resolution</b>. It takes one of four forms:
+<ul class="howto" style="color:#431407">
+<li><b>Task-oriented:</b> the user wants a task done and the assistant did not deliver it.</li>
+<li><b>Emotional:</b> the user is distressed and still needs to be persuaded or supported.</li>
+<li><b>Validation:</b> the user wants agreement with their viewpoint, and the assistant's view differs.</li>
+<li><b>Eristic:</b> the user holds an opposing view and wants a debate or a fight.</li>
+</ul>
+An ordinary question or request with no opposing view is <b>not</b> a conflict.
+</div>
+<strong>Labels</strong>
+<dl class="defs">
+<dt style="color:#2f5bea">1 · Ongoing</dt><dd>The user continues with a follow-up question or new request, with no conflict.<br><span class="exq">e.g. <i>"Nice, the second one looks good. Can I swap the cream for something lighter?"</i></span><br><span class="exq">e.g. <i>"Okay. Which one is faster at night?"</i></span></dd>
+<dt style="color:#b91c1c">2 · Conflict</dt><dd>The reply shows a conflict (as defined above), even if the user also asks a follow-up question.<br><span class="exq">e.g. <i>"That's way too generic. Just write the first paragraph for me already?"</i></span><br><span class="exq">e.g. <i>"You don't get it. Saying 'I understand' doesn't make me feel any better."</i></span></dd>
+<dt style="color:#15803d">3 · Satisfied</dt><dd>The user signals their need is met and wraps up, with no further request.<br><span class="exq">e.g. <i>"Perfect, sending it now. Thanks!"</i></span><br><span class="exq">e.g. <i>"Finally, that's what I wanted. Thanks."</i></span></dd>
+</dl>
+<ul class="howto" style="margin-top:14px">
+<li>Judge <b>only the highlighted user reply</b>. Earlier turns are shown as context.</li>
+<li>Several items come from the same conversation, one per user reply. Later turns stay hidden until their own item.</li>
+<li>Use keys <b>1 / 2 / 3</b> to answer and <b>← →</b> to move.</li>
+</ul>
+<p style="font-size:12px;color:#9ca3af;margin:14px 0 0">Note: dialogues are shown verbatim and may contain harsh language or sensitive topics. You may stop at any time.</p>
+<div class="field" id="nameField"><label for="rater">Your name <span style="font-weight:400;color:#9ca3af">(test mode; Prolific ID is used automatically)</span></label><input type="text" id="rater" placeholder="any name" autocomplete="off"></div>
+<p id="pidNote" class="hidden" style="font-size:13px;color:#065f46"></p>
+<p id="loadNote" style="font-size:13px;color:#6b7280">Loading items…</p>
+<button class="btn primary" id="startBtn" disabled>Start</button>
+</div></section>
+
+<section id="app" class="hidden">
+<header class="top">
+ <div class="progress"><span class="count" id="count">1/23</span><div class="bar"><i id="barfill"></i></div><span class="ds-info" id="answeredCount"></span></div>
+ <span class="rater" id="raterLbl"></span><div class="spacer"></div>
+ <button class="btn sm" id="homeBtn">Instructions</button>
+</header>
+<div class="qbar"><span class="trait">Label</span><span class="q">What state does the highlighted user reply show?</span><span class="id" id="itemId"></span>
+<div class="defs-inline"><span class="pill O">1 · Ongoing</span> keeps going, no conflict <span class="pill C">2 · Conflict</span> opposing views still need resolution <span class="pill S">3 · Satisfied</span> need met, wraps up</div></div></div>
+<main class="single"><div class="pane A">
+ <div class="pane-head"><span class="tag">Dialogue</span><span class="meta" id="meta"></span>
+  <div class="tools"><button class="btn sm" id="expandAll">Expand all</button><button class="btn sm" id="collapseAll">Collapse all</button></div></div>
+ <div class="chat" id="chat"></div>
+</div></main>
+<footer class="answer">
+ <div class="choices">
+  <button class="choice O" data-a="ongoing">Ongoing<small>1</small></button>
+  <button class="choice C" data-a="conflict">Conflict<small>2</small></button>
+  <button class="choice R" data-a="satisfied">Satisfied<small>3</small></button>
+ </div>
+ <div class="nav"><span class="unanswered" id="unans"></span><button class="btn" id="prevBtn">← Prev</button><button class="btn primary" id="nextBtn">Next →</button></div>
+</footer>
+</section>
+
+<section id="done" class="hidden"><div class="card">
+<h1>Thanks!</h1><p class="sub" id="doneMsg"></p>
+<p id="submitMsg" style="font-size:14px;margin:12px 0 0"></p>
+<div style="display:flex;gap:8px;margin-top:14px;align-items:center"><button class="btn" id="backBtn">Review answers</button><button class="btn primary" id="submitBtn">Submit</button><a id="returnLink" class="btn primary hidden" href="#">Return to Prolific</a><button class="btn sm hidden" id="exportBtn" style="margin-left:auto">Export JSON</button></div>
+<table class="assign" id="summary" style="margin-top:18px"></table>
+<textarea id="exportBox" class="hidden" style="width:100%;height:220px;margin-top:12px;font-family:ui-monospace,Menlo,monospace;font-size:12px"></textarea>
+</div></section>
+
+<script>
+// ===================== CONFIG =====================
+const CONFIG={
+  // Google Apps Script web app URL (ends with /exec). Leave "" to test without saving.
+  ENDPOINT:"",
+  // Prolific completion URL, e.g. "https://app.prolific.com/submissions/complete?cc=XXXXXXX"
+  COMPLETION_URL:"",
+  DATA_URL:"data.json",
+  TASK:"user-turn-state-v1"
+};
+// ==================================================
+let DATA=[];
+const QS=new URLSearchParams(location.search);
+const PID=QS.get("PROLIFIC_PID")||"", STUDY_ID=QS.get("STUDY_ID")||"", SESSION_ID=QS.get("SESSION_ID")||"";
+function expand(dialogues){const out=[];
+ for(const d of dialogues){const dia=d.dialogue;let n=0;
+  for(let k=0;k<dia.length;k++){ if(dia[k].role!=="user") continue; n++;
+   if(k>=2) out.push({id:d.id+"_u"+n,dialogue_id:d.id,turn_index:k+1,dialogue:dia.slice(0,k+1)}); } }
+ return out;}
+const LABELS={ongoing:"Ongoing",conflict:"Conflict",satisfied:"Satisfied"};
+const $=id=>document.getElementById(id);
+function escapeHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function inline(s){
+  const codes=[]; s=s.replace(/`([^`\n]+)`/g,(m,c)=>{codes.push(c);return "\u0000"+(codes.length-1)+"\u0000";});
+  s=s.replace(/\*\*\*([^*]+)\*\*\*/g,"<strong><em>$1</em></strong>")
+     .replace(/\*\*((?:[^*]|\*(?!\*))+?)\*\*/g,"<strong>$1</strong>")
+     .replace(/__([^_]+)__/g,"<strong>$1</strong>")
+     .replace(/(^|[^*\w])\*([^*\n]+)\*(?!\w)/g,"$1<em>$2</em>")
+     .replace(/(^|[^_\w])_([^_\n]+)_(?!\w)/g,"$1<em>$2</em>")
+     .replace(/~~([^~]+)~~/g,"<del>$1</del>")
+     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  s=s.replace(/\u0000(\d+)\u0000/g,(m,i)=>"<code>"+codes[+i]+"</code>");
+  return s;
+}
+function renderMarkdown(src){
+  const lines=escapeHtml(src.replace(/\r\n?/g,"\n")).split("\n");
+  let out=[],i=0;
+  const listStack=[];
+  function closeLists(toIndent=-1){
+    while(listStack.length && listStack[listStack.length-1].indent>toIndent){ out.push("</"+listStack.pop().type+">"); }
+  }
+  let para=[];
+  function flushPara(){ if(para.length){ out.push("<p>"+inline(para.join(" "))+"</p>"); para=[]; } }
+  while(i<lines.length){
+    let ln=lines[i];
+    let fm=ln.match(/^\s*```(\w*)/);
+    if(fm){ flushPara(); closeLists(); let buf=[]; i++;
+      while(i<lines.length && !/^\s*```/.test(lines[i])){buf.push(lines[i]);i++;}
+      i++; out.push("<pre><code>"+buf.join("\n")+"</code></pre>"); continue; }
+    if(/^\s*$/.test(ln)){ flushPara(); closeLists(); i++; continue; }
+    let hm=ln.match(/^\s{0,3}(#{1,5})\s+(.*?)\s*#*\s*$/);
+    if(hm){ flushPara(); closeLists(); out.push("<h"+hm[1].length+">"+inline(hm[2])+"</h"+hm[1].length+">"); i++; continue; }
+    if(/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(ln)){ flushPara(); closeLists(); out.push("<hr>"); i++; continue; }
+    if(/^\s{0,3}&gt;\s?/.test(ln)){ flushPara(); closeLists(); let buf=[];
+      while(i<lines.length && /^\s{0,3}&gt;\s?/.test(lines[i])){buf.push(lines[i].replace(/^\s{0,3}&gt;\s?/,""));i++;}
+      out.push("<blockquote>"+renderMarkdown(unescapeHtml(buf.join("\n")))+"</blockquote>"); continue; }
+    if(/^\s*\|.*\|\s*$/.test(ln) && i+1<lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i+1])){
+      flushPara(); closeLists(); const rows=[]; while(i<lines.length && /^\s*\|.*\|\s*$/.test(lines[i])){rows.push(lines[i]);i++;}
+      const cells=r=>r.trim().replace(/^\||\|$/g,"").split("|").map(c=>inline(c.trim()));
+      let t="<table><thead><tr>"+cells(rows[0]).map(c=>"<th>"+c+"</th>").join("")+"</tr></thead><tbody>";
+      for(let r=2;r<rows.length;r++) t+="<tr>"+cells(rows[r]).map(c=>"<td>"+c+"</td>").join("")+"</tr>";
+      out.push(t+"</tbody></table>"); continue; }
+    let lm=ln.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+    if(lm){ flushPara(); const indent=lm[1].replace(/\t/g,"    ").length; const type=/\d/.test(lm[2])?"ol":"ul";
+      closeLists(indent);
+      const top=listStack[listStack.length-1];
+      if(!top || top.indent<indent || top.type!==type){ if(top && top.indent===indent && top.type!==type){ out.push("</"+listStack.pop().type+">"); } listStack.push({type,indent}); out.push("<"+type+">"); }
+      let item=lm[3]; i++;
+      while(i<lines.length && !/^\s*$/.test(lines[i]) && !/^(\s*)([-*+]|\d+[.)])\s+/.test(lines[i]) && !/^\s{0,3}#{1,5}\s/.test(lines[i]) && /^\s{2,}/.test(lines[i])){ item+=" "+lines[i].trim(); i++; }
+      out.push("<li>"+inline(item)+"</li>"); continue; }
+    if(listStack.length && !/^\s*$/.test(ln) && !/^\s{0,3}#{1,5}\s/.test(ln)){
+      const last=out.length-1; if(out[last] && out[last].startsWith("<li>")){ out[last]=out[last].replace(/<\/li>$/, " "+inline(ln.trim())+"</li>"); i++; continue; }
+    }
+    para.push(ln.trim()); i++;
+  }
+  flushPara(); closeLists();
+  return out.join("\n");
+}
+function unescapeHtml(s){return s.replace(/&quot;/g,'"').replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");}
+
+let RATER="",idx=0,ANS={},t0=0;
+function key(){return CONFIG.TASK+":"+RATER;}
+function save(){try{localStorage.setItem(key(),JSON.stringify(ANS));}catch(e){}}
+function show(id){for(const s of ["start","app","done"]) $(s).classList.toggle("hidden",s!==id);}
+let LOADED=false, SUBMITTED=false;
+function canStart(){return LOADED&&(PID||$("rater").value.trim());}
+function upd(){$("startBtn").disabled=!canStart();}
+$("rater").addEventListener("input",upd);
+$("rater").addEventListener("keydown",e=>{if(e.key==="Enter"&&canStart()) start();});
+$("startBtn").onclick=start;
+if(PID){$("nameField").classList.add("hidden");$("pidNote").classList.remove("hidden");$("pidNote").textContent="✓ Prolific ID detected. Click Start to begin.";}
+if(QS.has("debug")) $("exportBtn").classList.remove("hidden");
+fetch(CONFIG.DATA_URL,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(d=>{DATA=expand(d);LOADED=true;
+ $("loadNote").textContent=DATA.length+" items";upd();}).catch(e=>{$("loadNote").textContent="Could not load the items. Please refresh the page.";$("loadNote").style.color="#b91c1c";});
+function start(){if(!canStart())return;RATER=PID||$("rater").value.trim();try{ANS=JSON.parse(localStorage.getItem(key())||"{}");}catch(e){ANS={};}
+ $("raterLbl").textContent=PID?"":"Annotator: "+RATER; idx=0; show("app"); render();}
+function renderChat(el,dialogue){
+ el.innerHTML="";
+ dialogue.forEach((m,i)=>{
+  const role=m.role==="assistant"?"assistant":"user";
+  const L=dialogue.length; const w=document.createElement("div"); w.className="msg "+role+(i===L-1?" target":"");
+  const who=document.createElement("div"); who.className="who"; who.innerHTML=(role==="user"?"USER":"ASSISTANT")+`<span class="turnno">#${i+1}</span>`+(i===dialogue.length-1?' <span class="turnno" style="color:#b45309;font-weight:700">← label this reply</span>':'');
+  const b=document.createElement("div"); b.className="bubble";
+  if(role==="assistant"){b.classList.add("md");b.innerHTML=renderMarkdown(String(m.content||""));} else b.textContent=m.content;
+  const row=document.createElement("div"); row.className="mrow";
+  const av=document.createElement("span"); av.className="av"; av.innerHTML=role==="user"?'<svg width="30" height="30" viewBox="-20 -20 40 40"><circle r="18" fill="#dfe9ff" stroke="#2f5bea" stroke-width="2"/><circle cy="-5" r="6" fill="#2f5bea"/><path d="M-10 11 a10 8 0 0 1 20 0" fill="#2f5bea"/></svg>':'<svg width="30" height="30" viewBox="-20 -32 40 52"><rect x="-18" y="-18" width="36" height="36" rx="9" fill="#f3f4f6" stroke="#6b7280" stroke-width="2"/><circle cx="-6" cy="-2" r="3.5" fill="#374151"/><circle cx="6" cy="-2" r="3.5" fill="#374151"/><rect x="-6" y="7" width="12" height="3" rx="1.5" fill="#374151"/><line x1="0" y1="-18" x2="0" y2="-26" stroke="#6b7280" stroke-width="2"/><circle cy="-28" r="3" fill="#6b7280"/></svg>';
+  if(role==="user") row.append(b,av); else row.append(av,b);
+  w.append(who,row);
+  if(role==="assistant"){const t=document.createElement("button");t.className="toggle hidden";t.textContent="Show more ▾";
+   t.onclick=()=>{const o=b.classList.toggle("open");t.textContent=o?"Show less ▴":"Show more ▾";};w.append(t);}
+  el.append(w);
+ });
+ requestAnimationFrame(()=>el.querySelectorAll(".msg.assistant").forEach(w=>{const b=w.querySelector(".bubble");if(b.scrollHeight>300){b.classList.add("collapsible");w.querySelector(".toggle").classList.remove("hidden");}}));
+ requestAnimationFrame(()=>{el.scrollTop=el.scrollHeight;});
+}
+function setAll(open){document.querySelectorAll("#chat .msg.assistant").forEach(w=>{const b=w.querySelector(".bubble.collapsible");if(!b)return;b.classList.toggle("open",open);w.querySelector(".toggle").textContent=open?"Show less ▴":"Show more ▾";});}
+$("expandAll").onclick=()=>setAll(true); $("collapseAll").onclick=()=>setAll(false);
+function render(){
+ const p=DATA[idx]; t0=Date.now();
+ $("count").textContent=(idx+1)+"/"+DATA.length; $("itemId").textContent=p.id;
+ $("meta").textContent=p.dialogue_id+" · turn "+p.turn_index;
+ renderChat($("chat"),p.dialogue); ui();
+}
+function ui(){
+ const p=DATA[idx], a=(ANS[p.id]||{}).answer;
+ document.querySelectorAll(".choice").forEach(b=>b.classList.toggle("sel",b.dataset.a===a));
+ const n=DATA.filter(x=>ANS[x.id]&&ANS[x.id].answer).length;
+ $("answeredCount").textContent="("+n+"/"+DATA.length+" answered)"; $("barfill").style.width=(100*n/DATA.length)+"%";
+ $("unans").textContent=a?"":"Not answered yet"; $("prevBtn").disabled=idx===0;
+ $("nextBtn").textContent=idx===DATA.length-1?"Finish ✓":"Next →";
+}
+function setAnswer(a){const p=DATA[idx];const cur=(ANS[p.id]||{}).answer;
+ ANS[p.id]=cur===a?{}:{answer:a,seconds:Math.round((Date.now()-t0)/1000),ts:new Date().toISOString()}; save(); ui();}
+document.querySelectorAll(".choice").forEach(b=>b.onclick=()=>setAnswer(b.dataset.a));
+function next(){if(idx<DATA.length-1){idx++;render();}else finish();}
+function prev(){if(idx>0){idx--;render();}}
+$("nextBtn").onclick=next; $("prevBtn").onclick=prev; $("homeBtn").onclick=()=>show("start");
+document.addEventListener("keydown",e=>{if($("app").classList.contains("hidden")||e.target.tagName==="INPUT")return;
+ const m={"1":"ongoing","2":"conflict","3":"satisfied"}; if(m[e.key]) setAnswer(m[e.key]);
+ else if(e.key==="ArrowRight"||e.key==="Enter") next(); else if(e.key==="ArrowLeft") prev();});
+function finish(){
+ const n=DATA.filter(x=>ANS[x.id]&&ANS[x.id].answer).length, all=n===DATA.length;
+ $("doneMsg").textContent=all?`All ${DATA.length} items answered. Please click Submit to save your answers.`:`You answered ${n} of ${DATA.length} items. Please answer the remaining items (click an item below) before submitting.`;
+ $("summary").innerHTML="<tr><th>Item</th><th>Turn</th><th>Your label</th></tr>"+DATA.map((p,i)=>`<tr><td><a href="#" data-i="${i}">${p.id}</a></td><td>${p.turn_index}</td><td>${ANS[p.id]&&ANS[p.id].answer?LABELS[ANS[p.id].answer]:"<span style='color:#b45309'>—</span>"}</td></tr>`).join("");
+ $("summary").querySelectorAll("a").forEach(a=>a.onclick=e=>{e.preventDefault();idx=+a.dataset.i;show("app");render();});
+ $("submitBtn").disabled=!all||SUBMITTED;
+ show("done");
+}
+function payload(){return {task:CONFIG.TASK,submission_id:(PID||RATER)+"-"+Date.now(),prolific_pid:PID,study_id:STUDY_ID,session_id:SESSION_ID,rater:RATER,
+ user_agent:navigator.userAgent,submitted_at:new Date().toISOString(),
+ answers:DATA.map(p=>({item_id:p.id,dialogue_id:p.dialogue_id,turn_index:p.turn_index,label:(ANS[p.id]||{}).answer||"",seconds:(ANS[p.id]||{}).seconds??"",answered_at:(ANS[p.id]||{}).ts||""}))};}
+async function send(body){
+ const opts={method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)};
+ try{const r=await fetch(CONFIG.ENDPOINT,opts);const j=await r.json();if(!j.ok)throw new Error(j.error||"save failed");return true;}
+ catch(e){ // Apps Script sometimes blocks reading the response; fall back to a fire-and-forget request
+  try{await fetch(CONFIG.ENDPOINT,{...opts,mode:"no-cors"});return true;}catch(e2){return false;}}
+}
+$("submitBtn").onclick=async()=>{
+ const b=$("submitBtn"); b.disabled=true; $("submitMsg").style.color="#6b7280"; $("submitMsg").textContent="Saving…";
+ const body=payload(); try{localStorage.setItem(key()+":submitted",JSON.stringify(body));}catch(e){}
+ const ok=CONFIG.ENDPOINT?await send(body):true;
+ if(!ok){$("submitMsg").style.color="#b91c1c";$("submitMsg").textContent="Saving failed. Please check your connection and click Submit again.";b.disabled=false;return;}
+ SUBMITTED=true; $("backBtn").classList.add("hidden"); b.classList.add("hidden");
+ if(!CONFIG.ENDPOINT){$("submitMsg").style.color="#b45309";$("submitMsg").textContent="Test mode: no endpoint is set, so nothing was saved.";return;}
+ $("submitMsg").style.color="#065f46"; $("submitMsg").textContent="✓ Your answers were saved. Thank you!";
+ if(CONFIG.COMPLETION_URL){const l=$("returnLink");l.href=CONFIG.COMPLETION_URL;l.classList.remove("hidden");
+  $("submitMsg").textContent+=" Returning you to Prolific…"; setTimeout(()=>{location.href=CONFIG.COMPLETION_URL;},2500);}
+};
+$("backBtn").onclick=()=>{show("app");render();};
+$("exportBtn").onclick=()=>{const box=$("exportBox");box.classList.remove("hidden");
+ box.value=JSON.stringify(payload(),null,2);box.select();};
+</script></body></html>
