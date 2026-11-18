@@ -317,10 +317,12 @@ An ordinary question or request with no opposing view is <b>not</b> a conflict.
 // ===================== CONFIG =====================
 const CONFIG={
   // Google Apps Script web app URL (ends with /exec). Leave "" to test without saving.
-  ENDPOINT:"",
+  ENDPOINT:"https://script.google.com/macros/s/AKfycbze9tibdAHkw-eToMYdGzQT0O3t2ekzeyRCu9gIAttqrJ_wxOKOCVSYNsYefnqRCxRt/exec",
   // Prolific completion URL, e.g. "https://app.prolific.com/submissions/complete?cc=XXXXXXX"
   COMPLETION_URL:"",
   DATA_URL:"data.json",
+  // Number of items to show (0 = all). Items keep dialogue order, so a dialogue may be cut after its first few user replies.
+  MAX_ITEMS:10,
   TASK:"user-turn-state-v1"
 };
 // ==================================================
@@ -405,7 +407,7 @@ $("rater").addEventListener("keydown",e=>{if(e.key==="Enter"&&canStart()) start(
 $("startBtn").onclick=start;
 if(PID){$("nameField").classList.add("hidden");$("pidNote").classList.remove("hidden");$("pidNote").textContent="✓ Prolific ID detected. Click Start to begin.";}
 if(QS.has("debug")) $("exportBtn").classList.remove("hidden");
-fetch(CONFIG.DATA_URL,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(d=>{DATA=expand(d);LOADED=true;
+fetch(CONFIG.DATA_URL,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(d=>{DATA=expand(d);if(CONFIG.MAX_ITEMS>0)DATA=DATA.slice(0,CONFIG.MAX_ITEMS);LOADED=true;
  $("loadNote").textContent=DATA.length+" items";upd();}).catch(e=>{$("loadNote").textContent="Could not load the items. Please refresh the page.";$("loadNote").style.color="#b91c1c";});
 function start(){if(!canStart())return;RATER=PID||$("rater").value.trim();try{ANS=JSON.parse(localStorage.getItem(key())||"{}");}catch(e){ANS={};}
  $("raterLbl").textContent=PID?"":"Annotator: "+RATER; idx=0; show("app"); render();}
